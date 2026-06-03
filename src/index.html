@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TP#5 — Osciloscopio CDD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0f0d; --panel:#101814; --grid:#15241c;
+    --phos:#39ff14; --phos-dim:#1f8a12; --amber:#ffb000;
+    --ink:#bfe8c4; --muted:#5b7a63; --edge:#1d2b22;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, #13201a 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:"IBM Plex Mono","DejaVu Sans Mono",monospace;
+    min-height:100vh; padding:24px;
+  }
+  .wrap{max-width:980px;margin:0 auto}
+  header{
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:1px solid var(--edge);padding-bottom:14px;margin-bottom:20px;
+    flex-wrap:wrap;gap:8px;
+  }
+  h1{font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:var(--phos);font-weight:600;}
+  h1 .sub{color:var(--muted);letter-spacing:.18em}
+  .stamp{font-size:11px;color:var(--muted);letter-spacing:.15em}
+  .scope{
+    position:relative;background:var(--panel);
+    border:1px solid var(--edge);border-radius:10px;
+    box-shadow:inset 0 0 60px rgba(0,0,0,.6), 0 0 0 1px rgba(57,255,20,.04);
+    padding:18px;overflow:hidden;
+  }
+  .readout{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;}
+  .field{display:flex;flex-direction:column;gap:2px}
+  .field .lbl{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+  .field .val{font-size:26px;color:var(--phos);text-shadow:0 0 8px rgba(57,255,20,.5);line-height:1}
+  .field .val.amber{color:var(--amber);text-shadow:0 0 8px rgba(255,176,0,.45)}
+  .field .val.small{font-size:16px}
+  .chartbox{position:relative;height:360px;width:100%}
+  .controls{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;align-items:center}
+  .controls .grp{display:flex;gap:10px}
+  button{
+    font-family:inherit;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    background:transparent;color:var(--phos-dim);
+    border:1px solid var(--edge);border-radius:6px;padding:11px 18px;cursor:pointer;transition:.18s;
+  }
+  button:hover{border-color:var(--phos-dim);color:var(--phos)}
+  button.active{background:rgba(57,255,20,.10);border-color:var(--phos);color:var(--phos);box-shadow:0 0 14px rgba(57,255,20,.18);}
+  .hint{font-size:10px;color:var(--muted);letter-spacing:.1em;margin-left:auto}
+  .led{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--phos);box-shadow:0 0 8px var(--phos);margin-right:7px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:.25}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SDEC&nbsp;<span class="sub">// osciloscopio cdd</span></h1>
+    <div class="stamp"><span class="led"></span><span id="status">conectando…</span></div>
+  </header>
+
+  <div class="scope">
+    <div class="readout">
+      <div class="field"><span class="lbl">Tipo de señal</span><span class="val" id="type">—</span></div>
+      <div class="field"><span class="lbl">Valor actual</span><span class="val amber" id="cur">—</span></div>
+      <div class="field"><span class="lbl">Tiempo</span><span class="val small" id="time">0 s</span></div>
+      <div class="field"><span class="lbl">Canal</span><span class="val small" id="chan">CH1</span></div>
+    </div>
+    <div class="chartbox"><canvas id="chart"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="grp">
+      <button id="b1" class="active" onclick="select(1)">CH1 · Senoidal</button>
+      <button id="b2" onclick="select(2)">CH2 · Cuadrada</button>
+    </div>
+    <span class="hint">cambiar de canal resetea el barrido</span>
+  </div>
+</div>
+
+<script>
+// Ejes: por defecto tiempo en X y valor en Y. Si tu catedra exige el grafico
+// rotado ("unidades en abscisas y tiempo en ordenadas"), pone TIME_ON_Y = true.
+const TIME_ON_Y = false;
+
+const PHOS = '#39ff14', GRID = 'rgba(57,255,20,0.10)', TICK = '#5b7a63';
+const ctx = document.getElementById('chart').getContext('2d');
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: [], datasets: [{
+    label: 'senal', data: [],
+    borderColor: PHOS, backgroundColor: 'rgba(57,255,20,0.08)',
+    borderWidth: 2, pointRadius: 2, pointBackgroundColor: PHOS,
+    tension: 0.15, fill: true,
+  }]},
+  options: {
+    animation: false, responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    scales: {
+      x: { type:'linear', title:{display:true, text: TIME_ON_Y?'valor':'tiempo  [s]', color:TICK},
+           grid:{color:GRID}, ticks:{color:TICK, maxTicksLimit:12} },
+      y: { type:'linear', title:{display:true, text: TIME_ON_Y?'tiempo  [s]':'valor', color:TICK},
+           grid:{color:GRID}, ticks:{color:TICK} },
+    },
+    plugins: { legend:{display:false} }
+  }
+});
+
+let lastEpoch = -1;
+
+function setActive(sig){
+  document.getElementById('b1').classList.toggle('active', sig===1);
+  document.getElementById('b2').classList.toggle('active', sig===2);
+  document.getElementById('chan').textContent = 'CH'+sig;
+}
+
+async function select(sig){
+  setActive(sig);
+  try { await fetch('/select?signal='+sig); } catch(e){}
+}
+
+async function tick(){
+  try{
+    const r = await fetch('/data');
+    const d = await r.json();
+    document.getElementById('status').textContent = 'en linea · '+d.points.length+' muestras';
+
+    if (d.epoch !== lastEpoch){
+      chart.data.datasets[0].data = [];
+      lastEpoch = d.epoch;
+    }
+
+    const valAxis = TIME_ON_Y ? chart.options.scales.x : chart.options.scales.y;
+    valAxis.title.text = 'valor  ['+d.unit+']';
+    if (d.signal === 2) { valAxis.suggestedMin = -0.3; valAxis.suggestedMax = 3.6; }
+    else                { valAxis.suggestedMin = -5.5; valAxis.suggestedMax = 5.5; }
+
+    chart.data.datasets[0].data = d.points.map(p =>
+      TIME_ON_Y ? ({x: p.value, y: p.t}) : ({x: p.t, y: p.value}));
+    chart.update();
+
+    document.getElementById('type').textContent = d.type;
+    setActive(d.signal);
+    const last = d.points[d.points.length-1];
+    if (last){
+      document.getElementById('cur').textContent  = Number(last.value).toFixed(3)+' '+d.unit;
+      document.getElementById('time').textContent = last.t+' s';
+    }
+  }catch(e){
+    document.getElementById('status').textContent = 'sin conexion';
+  }
+}
+
+setInterval(tick, 1000);
+tick();
+</script>
+</body>
+</html>
