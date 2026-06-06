@@ -17,11 +17,6 @@ static void on_sigint(int sig)
 	running = 0;
 }
 
-/*
- * Correccion de escala (especifica de usuario):
- *   - Senal 1 (senoidal): el kernel entrega +-1000  ->  +-5.0 V
- *   - Senal 2 (cuadrada):  el kernel entrega 0/1000  ->  0 / 3.3 V
- */
 static void scale(int sig, int raw, double *value, const char **type,
 		  const char **unit)
 {
@@ -36,7 +31,7 @@ static void scale(int sig, int raw, double *value, const char **type,
 	}
 }
 
-/* Abre el device, escribe el selector ('1'/'2'), cierra. */
+
 static int select_signal(const char *dev, int sel)
 {
 	char c = (sel == 2) ? '2' : '1';
@@ -50,7 +45,7 @@ static int select_signal(const char *dev, int sel)
 	return (w < 0) ? -1 : 0;
 }
 
-/* Abre el device, lee una linea, cierra. Devuelve 0 si parseo bien. */
+
 static int read_sample(const char *dev, int *sig, long *t, int *raw)
 {
 	char line[64];
@@ -98,7 +93,6 @@ int main(int argc, char **argv)
 		double value;
 		const char *type, *unit;
 
-		/* Esperar hasta 1 s por un comando de cambio de senal por stdin. */
 		FD_ZERO(&rfds);
 		FD_SET(STDIN_FILENO, &rfds);
 		if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) > 0 &&

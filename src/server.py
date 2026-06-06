@@ -8,16 +8,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MAX_POINTS = 120          # cantidad de muestras visibles (~2 min a 1/s)
+MAX_POINTS = 120          
 
-# ---------------------------------------------------------------------------
-# Estado compartido entre el hilo lector y el servidor HTTP
-# ---------------------------------------------------------------------------
 state_lock = threading.Lock()
-points = deque(maxlen=MAX_POINTS)   # cada item: {"t":int, "value":float}
+points = deque(maxlen=MAX_POINTS)   
 meta = {"signal": 1, "type": "senoidal", "unit": "V"}
-epoch = 0                           # se incrementa en cada cambio de senal
-reader_proc = None                  # subproceso del reader (C)
+epoch = 0                           
+reader_proc = None                  
 
 
 def reader_loop(proc):
@@ -40,7 +37,6 @@ def reader_loop(proc):
             }
             t = sample.get("t")
             value = sample.get("value")
-            # evitar duplicados: misma t que la ultima muestra
             if points and points[-1]["t"] == t:
                 continue
             points.append({"t": t, "value": value})
@@ -56,19 +52,16 @@ def switch_signal(n):
         except (BrokenPipeError, ValueError):
             return False
     with state_lock:
-        points.clear()      # reset de los datos -> el grafico arranca limpio
+        points.clear()      
         epoch += 1
         meta["signal"] = n
         meta["type"] = "cuadrada" if n == 2 else "senoidal"
     return True
 
 
-# ---------------------------------------------------------------------------
-# Servidor HTTP
-# ---------------------------------------------------------------------------
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
-        pass  # silenciar el log por request
+        pass
 
     def _send(self, code, body, ctype="application/json"):
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -134,7 +127,6 @@ def main():
         raise SystemExit(f"No encuentro el reader en {reader_path}. "
                          f"Compilalo con 'make' en user/.")
 
-    # lanzar el reader (C) como subproceso, en modo texto y line-buffered
     reader_proc = subprocess.Popen(
         [reader_path, str(args.signal), args.dev],
         stdin=subprocess.PIPE,
