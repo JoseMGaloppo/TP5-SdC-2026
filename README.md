@@ -8,11 +8,11 @@
 
 ### Repositorios
 
-[Repositorio Moreyra]
+[Repositorio Moreyra](https://github.com/moreyrajulian/TP5-SdC-2026)
 
-[Repositorio Galoppo]
+[Repositorio Galoppo](https://github.com/JoseMGaloppo/TP5-SdC-2026)
 
-[Repositorio Diaz]
+[Repositorio Diaz](https://github.com/Pablodadiaz/TP5-SdC-2026)
 
 ---
 
