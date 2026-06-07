@@ -116,16 +116,22 @@ física; el flujo de trabajo es el mismo (cross-compilar en la PC y enviar por S
 
 ## Arquitectura de la solución
 
-```
-  [ Kernel ]                          [ Espacio de usuario ]
-                                                              
-  sdec_signals.ko                       reader (C)            server.py (Python)      Navegador
-  ┌─────────────────┐                  ┌───────────────┐     ┌──────────────────┐    ┌──────────┐
-  │ timer cada 1 s  │   /dev/SdeC_*    │ lee el device │     │ lanza el reader  │    │ Chart.js │
-  │ senoidal+cuadr. │◀────read()──────▶│ corrige escala│────▶│ junta muestras   │◀──▶│ gráfico  │
-  │ read() / write()│◀───write(1/2)────│ emite JSON    │     │ sirve /data y web│    │ en vivo  │
-  └─────────────────┘                  └───────────────┘     └──────────────────┘    └──────────┘
-       (sensa)                          (escala+selección)        (web)              (visualización)
+```mermaid
+graph LR
+  subgraph K["[ Kernel ]"]
+    sdec["<b>sdec_signals.ko</b><br/>timer cada 1 s<br/>senoidal+cuadr.<br/>read() / write()<br/><i>(sensa)</i>"]
+  end
+
+  subgraph U["[ Espacio de usuario ]"]
+    reader["<b>reader (C)</b><br/>lee el device<br/>corrige escala<br/>emite JSON<br/><i>(escala+selección)</i>"]
+    server["<b>server.py (Python)</b><br/>lanza el reader<br/>junta muestras<br/>sirve /data y web<br/><i>(web)</i>"]
+    browser["<b>Navegador</b><br/>Chart.js<br/>gráfico<br/>en vivo<br/><i>(visualización)</i>"]
+  end
+
+  sdec-- "/dev/SdeC_*<br/>read()" -->reader
+  reader-- "write(1/2)" -->sdec
+  reader-->server
+  server<-->browser
 ```
 
 **Responsabilidades de cada capa:**
